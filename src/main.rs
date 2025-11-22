@@ -2,17 +2,14 @@ use bevy::prelude::*;
 use bevy::window::{Window, WindowResolution, WindowPlugin};
 
 //todo: add tetris music
-//todo: menu with play and quite options
-//todo: cool background
+//todo: menu with play and quite buttons
+//todo: get assets for the bricks
+//todo: 10x20 grid
 
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let background_image: Handle<Image> = asset_server.load("background.png");
-
-    // 2D camera (in 0.17 you can still use `Camera2d`)
     commands.spawn(Camera2d);
-
-    // Fullscreen background sprite scaled to window resolution
     commands.spawn((
         Sprite {
             image: background_image,
