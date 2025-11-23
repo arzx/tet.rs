@@ -1,99 +1,11 @@
 use bevy::prelude::*;
 use bevy::window::{Window, WindowResolution, WindowPlugin};
-use bevy::app::AppExit;
+mod menu;
+use menu::{spawn_menu, menu_button_system, AppState};
 //todo: add tetris music
 //todo: get assets for the bricks
 //todo: 10x20 grid
 //todo: make the menu as a plugin
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
-enum AppState{
-    #[default]
-    MainMenu,
-    InGame,
-}
-
-#[derive(Component)]
-struct MenuRoot;
-
-#[derive(Component)]
-struct StartButton;
-
-#[derive(Component)]
-struct QuitButton;
-
-fn spawn_menu(mut commands: Commands){
-    commands.spawn((Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            ..default()
-        }, MenuRoot))
-        .with_children(|parent| {
-            parent.spawn(Node {
-                    flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(12.0),
-                    align_items: AlignItems::Center,
-                    ..default()
-                })
-                .with_children(|col| {
-                    col.spawn((Node {
-                            width: Val::Px(220.0),
-                            height: Val::Px(64.0),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                        Button,
-                        StartButton,
-                        BackgroundColor(Color::srgb(0.2, 0.5, 0.8))
-                    ))
-                    .with_children(|button| {
-                        button.spawn(Text::new("Start"));
-                    });
-                    col.spawn((Node {
-                            width: Val::Px(220.0),
-                            height: Val::Px(64.0),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                        Button,
-                        QuitButton,
-                        BackgroundColor(Color::srgb(0.8, 0.2, 0.2))
-                    ))
-                    .with_children(|button| {
-                        button.spawn(Text::new("Quit"));
-                    });
-                });
-        });
-}
-
-
-fn menu_button_system(
-    mut commands: Commands,
-    mut changed: Query<
-    (Entity, &Interaction, Option<&StartButton>, Option<&QuitButton>),
-    (Changed<Interaction>, With<Button>),
-    >,
-    menu: Query<Entity, With<MenuRoot>>,
-    mut next_state: ResMut<NextState<AppState>>,
-    mut app_exit: MessageWriter<AppExit>,
-
-) {
-    for (_entity, interaction, is_start, is_quit) in changed.iter_mut(){
-        if *interaction == Interaction::Pressed {
-            if is_start.is_some() {
-                next_state.set(AppState::InGame);
-                for m in menu.iter() {
-                    commands.entity(m).despawn();
-                }
-            } else if is_quit.is_some() {
-                app_exit.write(AppExit::Success);
-            }
-        }
-    }
-}
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let background_image: Handle<Image> = asset_server.load("background.png");
