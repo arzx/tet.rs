@@ -1,7 +1,7 @@
 use bevy::prelude::*;
-use bevy::window::{Window, WindowResolution, WindowPlugin};
+use bevy::window::{Window, WindowPlugin, WindowResolution};
 mod menu;
-use menu::{spawn_menu, menu_button_system, AppState};
+use menu::{AppState, menu_button_system, spawn_menu};
 //todo: add tetris music
 //todo: get assets for the bricks
 //todo: 10x20 grid
@@ -27,17 +27,14 @@ fn main() {
             primary_window: Some(Window {
                 title: "Tetris".to_string(),
                 // use integers (u32) and chain the builder method:
-                resolution: WindowResolution::new(1200, 1800)
-                    .with_scale_factor_override(1.0),
+                resolution: WindowResolution::new(1200, 1800).with_scale_factor_override(1.0),
                 resizable: false,
                 ..default()
             }),
             ..default()
         }))
         .init_state::<AppState>()
-        .add_systems(Startup, 
-            (setup, spawn_menu)
-        )
+        .add_systems(Startup, (setup, spawn_menu))
         .add_systems(Update, menu_button_system)
         .run();
 }
