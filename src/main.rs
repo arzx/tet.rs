@@ -1,15 +1,25 @@
+mod menu;
+mod states;
+mod game;
+
 use bevy::prelude::*;
 use bevy::window::{Window, WindowPlugin, WindowResolution};
-mod menu;
-use menu::{AppState, menu_button_system, spawn_menu};
+use menu::{menu_button_system, spawn_menu, cleanup_menu};
+use states::AppState;
+
 //todo: add tetris music
 //todo: get assets for the bricks
 //todo: 10x20 grid
 //todo: make the menu as a plugin
+#[derive(Component)]
+pub struct MenuCamera;
+
+#[derive(Component)]
+pub struct MenuBackground;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let background_image: Handle<Image> = asset_server.load("background.png");
-    commands.spawn(Camera2d);
+    commands.spawn((Camera2d, MenuCamera));
     commands.spawn((
         Sprite {
             image: background_image,
@@ -18,6 +28,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..Default::default()
         },
         Transform::from_translation(Vec3::new(0.0, 0.0, -1.0)),
+        MenuBackground
     ));
 }
 
@@ -34,7 +45,10 @@ fn main() {
             ..default()
         }))
         .init_state::<AppState>()
-        .add_systems(Startup, (setup, spawn_menu))
+        .add_systems(Startup, setup)
+        .add_systems(OnEnter(AppState::MainMenu), spawn_menu)
+        .add_systems(OnExit(AppState::MainMenu), cleanup_menu)
         .add_systems(Update, menu_button_system)
+        .add_systems(OnEnter(AppState::InGame), game::setup_ingame)
         .run();
 }

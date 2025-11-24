@@ -1,12 +1,7 @@
 use bevy::app::AppExit;
 use bevy::prelude::*;
-
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
-pub enum AppState {
-    #[default]
-    MainMenu,
-    InGame,
-}
+use crate::states::AppState;
+use crate::MenuBackground;
 
 #[derive(Component)]
 pub struct MenuRoot;
@@ -98,5 +93,18 @@ pub fn menu_button_system(
                 app_exit.write(AppExit::Success);
             }
         }
+    }
+}
+
+pub fn cleanup_menu(
+    mut commands: Commands, 
+    roots: Query<Entity, With<MenuRoot>>,
+    backgrounds: Query<Entity, With<MenuBackground>>,
+) {
+    for entity in roots.iter() {
+        commands.entity(entity).despawn();
+    }
+    for entity in backgrounds.iter(){
+        commands.entity(entity).despawn();
     }
 }
