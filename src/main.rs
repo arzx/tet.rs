@@ -9,8 +9,6 @@ use states::AppState;
 
 //todo: add tetris music
 //todo: get assets for the bricks
-//todo: 10x20 grid
-//todo: make the menu as a plugin
 #[derive(Component)]
 pub struct MenuCamera;
 
