@@ -63,6 +63,24 @@ pub fn setup_ingame(mut commands: Commands, mut camera_query: Query<&mut Transfo
                             },
                         ));
                     });
+                    col.spawn((
+                        Node {
+                            width: Val::Px(220.0),
+                            height: Val::Px(64.0),
+                            justify_content: JustifyContent::FlexEnd,
+                            align_items: AlignItems::FlexEnd,
+                            ..default()
+                        },
+                    ))
+                    .with_children(|col| {
+                        col.spawn((
+                            Text::new("Level:  "),
+                            TextFont {
+                                font_size: 40.0,
+                                ..default()
+                            },
+                        ));
+                    });
                 });
         });
 }
