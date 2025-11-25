@@ -1,7 +1,7 @@
+use crate::MenuBackground;
+use crate::states::AppState;
 use bevy::app::AppExit;
 use bevy::prelude::*;
-use crate::states::AppState;
-use crate::MenuBackground;
 
 #[derive(Component)]
 pub struct MenuRoot;
@@ -68,7 +68,6 @@ pub fn spawn_menu(mut commands: Commands) {
 }
 
 pub fn menu_button_system(
-    mut commands: Commands,
     mut changed: Query<
         (
             Entity,
@@ -78,7 +77,6 @@ pub fn menu_button_system(
         ),
         (Changed<Interaction>, With<Button>),
     >,
-    menu: Query<Entity, With<MenuRoot>>,
     mut next_state: ResMut<NextState<AppState>>,
     mut app_exit: MessageWriter<AppExit>,
 ) {
@@ -86,9 +84,6 @@ pub fn menu_button_system(
         if *interaction == Interaction::Pressed {
             if is_start.is_some() {
                 next_state.set(AppState::InGame);
-                for m in menu.iter() {
-                    commands.entity(m).despawn();
-                }
             } else if is_quit.is_some() {
                 app_exit.write(AppExit::Success);
             }
@@ -97,14 +92,14 @@ pub fn menu_button_system(
 }
 
 pub fn cleanup_menu(
-    mut commands: Commands, 
+    mut commands: Commands,
     roots: Query<Entity, With<MenuRoot>>,
     backgrounds: Query<Entity, With<MenuBackground>>,
 ) {
     for entity in roots.iter() {
         commands.entity(entity).despawn();
     }
-    for entity in backgrounds.iter(){
+    for entity in backgrounds.iter() {
         commands.entity(entity).despawn();
     }
 }

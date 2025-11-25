@@ -1,13 +1,14 @@
+mod board;
+mod game;
 mod menu;
 mod states;
-mod game;
-mod board;
 
 use bevy::prelude::*;
 use bevy::window::{Window, WindowPlugin, WindowResolution};
-use menu::{menu_button_system, spawn_menu, cleanup_menu};
+use board::{BOARD_HEIGHT, BOARD_WIDTH, Board, Cell};
+use menu::{cleanup_menu, menu_button_system, spawn_menu};
 use states::AppState;
-use board::{Board, BOARD_HEIGHT, BOARD_WIDTH, Cell};
+
 //todo: add tetris music
 //todo: get assets for the bricks
 #[derive(Component)]
@@ -27,7 +28,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..Default::default()
         },
         Transform::from_translation(Vec3::new(0.0, 0.0, -1.0)),
-        MenuBackground
+        MenuBackground,
     ));
 }
 
@@ -49,6 +50,15 @@ fn main() {
         .add_systems(OnExit(AppState::MainMenu), cleanup_menu)
         .add_systems(Update, menu_button_system)
         .add_systems(OnEnter(AppState::InGame), game::setup_ingame)
-        .insert_resource(Board { cells: [[Cell::Empty; BOARD_WIDTH]; BOARD_HEIGHT] })
+        .insert_resource(Board {
+            cells: [[Cell::Empty; BOARD_WIDTH]; BOARD_HEIGHT],
+        })
+        .add_systems(
+            Update,
+            (
+                menu_button_system.run_if(in_state(AppState::MainMenu)),
+                game::sync_board.run_if(in_state(AppState::InGame)),
+            ),
+        )
         .run();
 }
