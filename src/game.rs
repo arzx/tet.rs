@@ -2,7 +2,7 @@ use crate::MenuCamera;
 use crate::{BOARD_HEIGHT, BOARD_WIDTH, Board, Cell};
 use bevy::prelude::*;
 use bevy::window::Window;
-use crate::tetrominoes::{ActivePiece, place_active_on_board, clear_active_from_board};
+use crate::tetrominoes::{ActivePiece, place_active_on_board, clear_active_from_board, shape_of};
 
 
 #[derive(Resource)]
@@ -144,10 +144,10 @@ pub fn spawn_first_piece(
 ) {
     let active = ActivePiece::spawn_new();
 
-    // use it first
-    place_active_on_board(&active, &mut board, Color::srgb(0.8, 0.9, 1.0));
+    // draw it
+    place_active_on_board(&active, &mut board);
 
-    // then move it into the world as a resource
+    // store as resource
     commands.insert_resource(active);
 }
 
@@ -165,14 +165,42 @@ pub fn fall_piece_system(
         return;
     }
 
-    // 1) clear old position from the board
+    // 1) clear current position FIRST so we don't collide with ourselves
     clear_active_from_board(&active, &mut board);
 
-    // 2) move piece down one cell (y - 1)
-    active.y -= 1;
+    // 2) check if we can move down one cell
+    let shape = shape_of(active.kind.clone(), active.rotation);
+    let mut can_move_down = true;
 
-    // TODO later: stop when y < 0 or when hitting other blocks
+    for (dx, dy) in shape.cells {
+        let new_x = active.x + dx;
+        let new_y = active.y - 1 + dy;
 
-    // 3) draw at new position
-    place_active_on_board(&active, &mut board, Color::srgb(0.8, 0.9, 1.0));
+        // bottom of board
+        if new_y < 0 {
+            can_move_down = false;
+            break;
+        }
+
+        // hit existing block?
+        if let Some(Cell::Filled(_)) = board.get(new_x, new_y) {
+            can_move_down = false;
+            break;
+        }
+    }
+
+    if can_move_down {
+        // 3a) move down and redraw
+        active.y -= 1;
+        place_active_on_board(&active, &mut board);
+    } else {
+        // 3b) lock in place where it was
+        place_active_on_board(&active, &mut board);
+
+        // 4) spawn a new random piece at the top
+        *active = ActivePiece::spawn_new();
+        place_active_on_board(&active, &mut board);
+
+        // (optional later: check for game over if spawn collides)
+    }
 }
