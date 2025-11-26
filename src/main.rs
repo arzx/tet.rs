@@ -2,6 +2,7 @@ mod board;
 mod game;
 mod menu;
 mod states;
+mod tetrominoes;
 
 use bevy::prelude::*;
 use bevy::window::{Window, WindowPlugin, WindowResolution};
@@ -49,7 +50,7 @@ fn main() {
         .add_systems(OnEnter(AppState::MainMenu), spawn_menu)
         .add_systems(OnExit(AppState::MainMenu), cleanup_menu)
         .add_systems(Update, menu_button_system)
-        .add_systems(OnEnter(AppState::InGame), game::setup_ingame)
+        .add_systems(OnEnter(AppState::InGame), (game::setup_ingame, game::setup_fall_timer, game::spawn_first_piece))
         .insert_resource(Board {
             cells: [[Cell::Empty; BOARD_WIDTH]; BOARD_HEIGHT],
         })
@@ -58,6 +59,7 @@ fn main() {
             (
                 menu_button_system.run_if(in_state(AppState::MainMenu)),
                 game::sync_board.run_if(in_state(AppState::InGame)),
+                game::fall_piece_system.run_if(in_state(AppState::InGame)),
             ),
         )
         .run();

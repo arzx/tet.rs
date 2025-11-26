@@ -2,6 +2,11 @@ use crate::MenuCamera;
 use crate::{BOARD_HEIGHT, BOARD_WIDTH, Board, Cell};
 use bevy::prelude::*;
 use bevy::window::Window;
+use crate::tetrominoes::{ActivePiece, place_active_on_board, clear_active_from_board};
+
+
+#[derive(Resource)]
+pub struct FallTimer(pub Timer);
 
 #[derive(Component)]
 pub struct CellSprite {
@@ -103,7 +108,8 @@ pub fn setup_ingame(
         for x in 0..BOARD_WIDTH {
             commands.spawn((
                 Sprite {
-                    custom_size: Some(Vec2::splat(cell_size)),
+                    custom_size: Some(Vec2::splat(cell_size -1.0)),
+                    color: Color::srgba(0.1, 0.1, 0.1, 0.5),
                     ..default()
                 },
                 Transform::from_xyz(
@@ -122,7 +128,7 @@ pub fn sync_board(board: Res<Board>, mut cells: Query<(&CellSprite, &mut Sprite)
         for (cell_info, mut sprite) in &mut cells {
             match board.cells[cell_info.y][cell_info.x] {
                 Cell::Empty => {
-                    sprite.color = Color::srgba(0.0, 0.0, 0.0, 0.2); // faint grid
+                    sprite.color = Color::srgba(0.0, 0.0, 0.0, 0.7); // faint grid
                 }
                 Cell::Filled(color) => {
                     sprite.color = color;
@@ -130,4 +136,43 @@ pub fn sync_board(board: Res<Board>, mut cells: Query<(&CellSprite, &mut Sprite)
             }
         }
     }
+}
+
+pub fn spawn_first_piece(
+    mut commands: Commands,
+    mut board: ResMut<Board>,
+) {
+    let active = ActivePiece::spawn_new();
+
+    // use it first
+    place_active_on_board(&active, &mut board, Color::srgb(0.8, 0.9, 1.0));
+
+    // then move it into the world as a resource
+    commands.insert_resource(active);
+}
+
+pub fn setup_fall_timer(mut commands: Commands) {
+    commands.insert_resource(FallTimer(Timer::from_seconds(0.5, TimerMode::Repeating)));
+}
+
+pub fn fall_piece_system(
+    time: Res<Time>,
+    mut timer: ResMut<FallTimer>,
+    mut board: ResMut<Board>,
+    mut active: ResMut<ActivePiece>,
+) {
+    if !timer.0.tick(time.delta()).just_finished() {
+        return;
+    }
+
+    // 1) clear old position from the board
+    clear_active_from_board(&active, &mut board);
+
+    // 2) move piece down one cell (y - 1)
+    active.y -= 1;
+
+    // TODO later: stop when y < 0 or when hitting other blocks
+
+    // 3) draw at new position
+    place_active_on_board(&active, &mut board, Color::srgb(0.8, 0.9, 1.0));
 }
