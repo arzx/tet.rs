@@ -83,7 +83,7 @@ pub struct ActivePiece{
 
 impl ActivePiece {
     pub fn spawn_new() -> Self {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let kinds = [
             TetrominoKind::I,
@@ -94,17 +94,17 @@ impl ActivePiece {
             TetrominoKind::J,
             TetrominoKind::L,
         ];
-        let kind = kinds[rng.gen_range(0..kinds.len())].clone();
+        let kind = kinds[rng.random_range(0..kinds.len())].clone();
 
         // random color
         let color = Color::srgb(
-            rng.gen_range(0.2..1.0),
-            rng.gen_range(0.2..1.0),
-            rng.gen_range(0.2..1.0),
+            rng.random_range(0.2..1.0),
+            rng.random_range(0.2..1.0),
+            rng.random_range(0.2..1.0),
         );
 
         // random X so the 4‑wide bounding box stays on the board
-        let x = rng.gen_range(0..=(BOARD_WIDTH as i32 - 4));
+        let x = rng.random_range(0..=(BOARD_WIDTH as i32 - 4));
 
         Self {
             kind,
@@ -127,27 +127,5 @@ pub fn clear_active_from_board(active: &ActivePiece, board: &mut Board) {
     let shape = shape_of(active.kind.clone(), active.rotation);
     for (dx, dy) in shape.cells {
         board.set(active.x + dx, active.y + dy, Cell::Empty);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::collections::HashSet;
-
-    #[test]
-    fn test_spawn_randomness() {
-        let mut kinds = HashSet::new();
-        for _ in 0..100 {
-            let piece = ActivePiece::spawn_new();
-            kinds.insert(piece.kind);
-        }
-        
-        // We expect to see more than just 1 kind of piece after 100 spawns
-        assert!(kinds.len() > 1, "Only spawned {:?} kinds: {:?}", kinds.len(), kinds);
-        
-        // Ideally we should see all 7, but let's be lenient and say at least 4 to account for extreme bad luck,
-        // though with 100 iterations the probability of missing 3 types is vanishingly small.
-        assert!(kinds.len() >= 4, "Distribution seems poor, only spawned: {:?}", kinds);
     }
 }

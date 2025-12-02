@@ -1,5 +1,6 @@
 use crate::MenuCamera;
 use crate::{BOARD_HEIGHT, BOARD_WIDTH, Board, Cell};
+use bevy::input::ButtonInput;
 use bevy::prelude::*;
 use bevy::window::Window;
 use crate::tetrominoes::{ActivePiece, place_active_on_board, clear_active_from_board, shape_of};
@@ -203,4 +204,101 @@ pub fn fall_piece_system(
 
         // (optional later: check for game over if spawn collides)
     }
+}
+
+/// Move the active tetromino left/right in response to A/D key presses.
+pub fn move_piece_horizontal_system(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut board: ResMut<Board>,
+    mut active: ResMut<ActivePiece>,
+) {
+    // Determine horizontal movement: A = left (-1), D = right (+1)
+    let mut dx = 0;
+    if keyboard_input.just_pressed(KeyCode::KeyA) {
+        dx -= 1;
+    }
+    if keyboard_input.just_pressed(KeyCode::KeyD) {
+        dx += 1;
+    }
+
+    // No horizontal input this frame
+    if dx == 0 {
+        return;
+    }
+
+    // Temporarily clear current piece from the board so it doesn't collide with itself
+    clear_active_from_board(&active, &mut board);
+
+    // Check if we can move horizontally by `dx` without hitting walls or other blocks
+    let shape = shape_of(active.kind.clone(), active.rotation);
+    let mut can_move = true;
+
+    for (cell_dx, cell_dy) in shape.cells {
+        let new_x = active.x + cell_dx + dx;
+        let new_y = active.y + cell_dy;
+
+        // Check board bounds on X and Y
+        if new_x < 0 || new_x >= BOARD_WIDTH as i32 || new_y < 0 {
+            can_move = false;
+            break;
+        }
+
+        // Check collision with existing filled cells
+        if let Some(Cell::Filled(_)) = board.get(new_x, new_y) {
+            can_move = false;
+            break;
+        }
+    }
+
+    // Apply movement if valid
+    if can_move {
+        active.x += dx;
+    }
+
+    // Redraw piece at its (potentially) new position
+    place_active_on_board(&active, &mut board);
+}
+
+pub fn rotate_piece_system(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut board: ResMut<Board>,
+    mut active: ResMut<ActivePiece>,
+) {
+    // Only act on a fresh W key press
+    if !keyboard_input.just_pressed(KeyCode::KeyW) {
+        return;
+    }
+
+    // Remove current piece so it doesn't collide with itself
+    clear_active_from_board(&active, &mut board);
+
+    // Calculate the next rotation state
+    let next_rotation = (active.rotation + 1) % 4;
+    let shape = shape_of(active.kind.clone(), next_rotation);
+    let mut can_rotate = true;
+
+    for (dx, dy) in shape.cells {
+        let new_x = active.x + dx;
+        let new_y = active.y + dy;
+
+        // Check board bounds
+        if new_x < 0 || new_x >= BOARD_WIDTH as i32 || new_y < 0 {
+            can_rotate = false;
+            break;
+        }
+
+        // Check for collisions with existing blocks
+        if let Some(Cell::Filled(_)) = board.get(new_x, new_y) {
+            can_rotate = false;
+            break;
+        }
+    }
+
+    // If rotation is valid, update the active piece
+    if can_rotate {
+        active.rotation = next_rotation;
+    }
+
+    // Draw the piece at its (possibly new) rotation
+    place_active_on_board(&active, &mut board);
 }

@@ -60,6 +60,8 @@ fn main() {
                 menu_button_system.run_if(in_state(AppState::MainMenu)),
                 game::sync_board.run_if(in_state(AppState::InGame)),
                 game::fall_piece_system.run_if(in_state(AppState::InGame)),
+                game::move_piece_horizontal_system.run_if(in_state(AppState::InGame)),
+                game::rotate_piece_system.run_if(in_state(AppState::InGame)),
             ),
         )
         .run();
