@@ -5,4 +5,5 @@ pub enum AppState {
     #[default]
     MainMenu,
     InGame,
+    GameOver,
 }

@@ -1,10 +1,11 @@
 use crate::MenuCamera;
+use crate::menu::{StartButton, QuitButton};
 use crate::{BOARD_HEIGHT, BOARD_WIDTH, Board, Cell};
 use bevy::input::ButtonInput;
 use bevy::prelude::*;
 use bevy::window::Window;
 use crate::tetrominoes::{ActivePiece, place_active_on_board, clear_active_from_board, shape_of};
-
+use crate::states::AppState;
 
 #[derive(Resource)]
 pub struct FallTimer(pub Timer);
@@ -139,6 +140,14 @@ pub fn sync_board(board: Res<Board>, mut cells: Query<(&CellSprite, &mut Sprite)
     }
 }
 
+pub fn reset_board(mut board: ResMut<Board>) {
+    for y in 0..BOARD_HEIGHT {
+        for x in 0..BOARD_WIDTH {
+            board.cells[y][x] = Cell::Empty;
+        }
+    }
+}
+
 pub fn spawn_first_piece(
     mut commands: Commands,
     mut board: ResMut<Board>,
@@ -156,11 +165,62 @@ pub fn setup_fall_timer(mut commands: Commands) {
     commands.insert_resource(FallTimer(Timer::from_seconds(0.5, TimerMode::Repeating)));
 }
 
+pub fn hard_drop_system(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut board: ResMut<Board>,
+    mut active: ResMut<ActivePiece>,
+) {
+    // Only act on a fresh Space press
+    if !keyboard_input.just_pressed(KeyCode::Space) {
+        return;
+    }
+
+    // Remove current piece so it doesn't collide with itself
+    clear_active_from_board(&active, &mut board);
+
+    // Move down as far as possible
+    loop {
+        let shape = shape_of(active.kind.clone(), active.rotation);
+        let mut can_move_down = true;
+
+        for (dx, dy) in shape.cells {
+            let new_x = active.x + dx;
+            let new_y = active.y - 1 + dy;
+
+            // Bottom of board
+            if new_y < 0 {
+                can_move_down = false;
+                break;
+            }
+
+            // Collision with existing block
+            if let Some(Cell::Filled(_)) = board.get(new_x, new_y) {
+                can_move_down = false;
+                break;
+            }
+        }
+
+        if can_move_down {
+            active.y -= 1;
+        } else {
+            break;
+        }
+    }
+
+    // Lock piece at final position
+    place_active_on_board(&active, &mut board);
+
+    // Spawn a new piece at the top
+    *active = ActivePiece::spawn_new();
+    place_active_on_board(&active, &mut board);
+}
+
 pub fn fall_piece_system(
     time: Res<Time>,
     mut timer: ResMut<FallTimer>,
     mut board: ResMut<Board>,
     mut active: ResMut<ActivePiece>,
+    mut next_state: ResMut<NextState<AppState>>,
 ) {
     if !timer.0.tick(time.delta()).just_finished() {
         return;
@@ -200,9 +260,16 @@ pub fn fall_piece_system(
 
         // 4) spawn a new random piece at the top
         *active = ActivePiece::spawn_new();
-        place_active_on_board(&active, &mut board);
 
-        // (optional later: check for game over if spawn collides)
+        // GAME OVER CHECK: if the new piece can't be placed (out of bounds or colliding),
+        // switch to GameOver state where we show a big "GAME OVER" sign.
+        if !can_place_piece(&active, &board) {
+            next_state.set(AppState::GameOver);
+            return;
+        }
+
+        // if it's valid, draw it
+        place_active_on_board(&active, &mut board);
     }
 }
 
@@ -301,4 +368,105 @@ pub fn rotate_piece_system(
 
     // Draw the piece at its (possibly new) rotation
     place_active_on_board(&active, &mut board);
+}
+
+fn can_place_piece(active: &ActivePiece, board: &Board) -> bool {
+    let shape = shape_of(active.kind.clone(), active.rotation);
+    for (dx, dy) in shape.cells {
+        let x = active.x + dx;
+        let y = active.y + dy;
+
+        // out of bounds => invalid
+        if x < 0 || x >= BOARD_WIDTH as i32 || y < 0 || y >= BOARD_HEIGHT as i32 {
+            return false;
+        }
+
+        // collides with existing block => invalid
+        if let Some(Cell::Filled(_)) = board.get(x, y) {
+            return false;
+        }
+    }
+    true
+}
+
+/// Root marker for the Game Over UI so it can be cleaned up easily.
+#[derive(Component)]
+pub struct GameOverRoot;
+
+/// Show a large "GAME OVER" sign centered on the screen.
+pub fn show_game_over_ui(mut commands: Commands) {
+    commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(20.0),
+                ..default()
+            },
+            GameOverRoot,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new("GAME OVER"),
+                TextFont {
+                    font_size: 120.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.9, 0.1, 0.1)),
+            ));
+
+            // Play Again Button
+            parent.spawn((
+                Node {
+                    width: Val::Px(220.0),
+                    height: Val::Px(64.0),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                Button,
+                StartButton,
+                BackgroundColor(Color::srgb(0.2, 0.5, 0.8)),
+            ))
+            .with_children(|button| {
+                button.spawn(Text::new("Play Again"));
+            });
+
+            // Quit Button
+            parent.spawn((
+                Node {
+                    width: Val::Px(220.0),
+                    height: Val::Px(64.0),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                Button,
+                QuitButton,
+                BackgroundColor(Color::srgb(0.8, 0.2, 0.2)),
+            ))
+            .with_children(|button| {
+                button.spawn(Text::new("Quit"));
+            });
+        });
+}
+
+/// Despawn all entities that belong to the Game Over UI.
+pub fn cleanup_game_over_ui(mut commands: Commands, roots: Query<Entity, With<GameOverRoot>>) {
+    for entity in &roots {
+        commands.entity(entity).despawn();
+    }
+}
+
+/// Optional: from the Game Over screen, press Space to go back to the main menu.
+pub fn game_over_input_system(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        next_state.set(AppState::MainMenu);
+    }
 }

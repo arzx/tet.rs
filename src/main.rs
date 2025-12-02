@@ -50,18 +50,25 @@ fn main() {
         .add_systems(OnEnter(AppState::MainMenu), spawn_menu)
         .add_systems(OnExit(AppState::MainMenu), cleanup_menu)
         .add_systems(Update, menu_button_system)
-        .add_systems(OnEnter(AppState::InGame), (game::setup_ingame, game::setup_fall_timer, game::spawn_first_piece))
+        .add_systems(
+            OnEnter(AppState::InGame),
+            (game::setup_ingame, game::setup_fall_timer, game::spawn_first_piece, game::reset_board),
+        )
+        .add_systems(OnEnter(AppState::GameOver), game::show_game_over_ui)
+        .add_systems(OnExit(AppState::GameOver), game::cleanup_game_over_ui)
         .insert_resource(Board {
             cells: [[Cell::Empty; BOARD_WIDTH]; BOARD_HEIGHT],
         })
         .add_systems(
             Update,
             (
-                menu_button_system.run_if(in_state(AppState::MainMenu)),
+                menu_button_system.run_if(in_state(AppState::MainMenu).or(in_state(AppState::GameOver))),
                 game::sync_board.run_if(in_state(AppState::InGame)),
                 game::fall_piece_system.run_if(in_state(AppState::InGame)),
                 game::move_piece_horizontal_system.run_if(in_state(AppState::InGame)),
                 game::rotate_piece_system.run_if(in_state(AppState::InGame)),
+                game::hard_drop_system.run_if(in_state(AppState::InGame)),
+                game::game_over_input_system.run_if(in_state(AppState::GameOver)),
             ),
         )
         .run();
